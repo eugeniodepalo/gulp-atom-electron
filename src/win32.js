@@ -47,21 +47,23 @@ function patchExecutable(opts) {
 		var ostream = fs.createWriteStream(tempPath);
 
 		f.contents.pipe(ostream);
-		ostream.on('close', function () {
-			rcedit(tempPath, patch, function (err) {
+		ostream.on('close', async function () {
+			try {
+				await rcedit(tempPath, patch);
+			} catch (err) {
+				return cb(err);
+			}
+
+			fs.readFile(tempPath, function (err, data) {
 				if (err) { return cb(err); }
 
-				fs.readFile(tempPath, function (err, data) {
+				f.contents = data;
+
+				fs.unlink(tempPath, function (err) {
 					if (err) { return cb(err); }
 
-					f.contents = data;
-
-					fs.unlink(tempPath, function (err) {
-						if (err) { return cb(err); }
-
-						cb(null, f);
-					})
-				});
+					cb(null, f);
+				})
 			});
 		});
 	});
@@ -95,4 +97,3 @@ exports.patch = function(opts) {
 
 	return es.duplex(pass, src);
 };
-
